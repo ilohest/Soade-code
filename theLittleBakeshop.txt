@@ -1,0 +1,916 @@
+
+// PRODUIT
+
+Ajouter des formulaires personnalisés à chaque produit avec exactement ces noms:
+
+- Pickup / delivery date (date)
+- Pickup time (heure)
+- Delivery time (menu déroulant)
+
+
+// DELETE CACHE
+
+localStorage.removeItem("patisserie_pickup_choice_v1");
+
+
+//HEADER
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://npmcdn.com/flatpickr/dist/themes/dark.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
+
+
+//FOOTER
+
+<script>
+(function () {
+  // =========================
+  // CONFIG
+  // =========================
+  const CONFIG = {
+    storageKey: "patisserie_pickup_choice_v3",
+    joursFermes: [1, 2],           // 0=Sun ... 6=Sat
+    delaiJoursOuvrables: 4,
+    heureOuverture: "10:00",
+    heureFermeture: "17:30",
+    livraisonZoneTexte: "Delivery available only within Luxembourg City. Please enter your address at checkout.",
+    pickupAdresseTexte: "Address: 7 rue du Palais de justice, 1841 Luxembourg Ville Haute. Tuesday to Sunday from 10:00 to 17:30.",
+    eshopHomePath: "/eshop"
+  };
+
+  // =========================
+  // LOGS
+  // =========================
+  const PF_TAG = "%c[PF]";
+  const PF_STYLE = "color:#0b6;font-weight:700";
+  const PF_STYLE_WARN = "color:#b60;font-weight:700";
+  const PF_STYLE_ERR = "color:#b00;font-weight:700";
+
+  function pfLog(...args){ console.log(PF_TAG, PF_STYLE, ...args); }
+  function pfWarn(...args){ console.warn(PF_TAG, PF_STYLE_WARN, ...args); }
+  function pfErr(...args){ console.error(PF_TAG, PF_STYLE_ERR, ...args); }
+
+  function pfReadRaw() {
+    try { return localStorage.getItem(CONFIG.storageKey); } catch { return null; }
+  }
+
+  function pfReadChoice() {
+    try {
+      const raw = pfReadRaw();
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      pfErr("localStorage JSON parse error", e);
+      return null;
+    }
+  }
+
+  function pfDumpChoice(context) {
+    const raw = pfReadRaw();
+    const parsed = pfReadChoice();
+    pfLog(context, { raw, parsed });
+    return parsed;
+  }
+
+  function writeChoice(obj) {
+    try {
+      localStorage.setItem(CONFIG.storageKey, JSON.stringify(obj));
+      pfDumpChoice("WRITE choice");
+    } catch (e) {
+      pfErr("writeChoice error", e);
+    }
+  }
+
+  // =========================
+  // PATH GUARD
+  // =========================
+  const path = window.location.pathname || "";
+  const isEshopFamily = path === "/eshop" || path.startsWith("/eshop/") || path.startsWith("/eshop-");
+  if (!isEshopFamily) return;
+
+  const isProductPage = /\/p\//.test(path);
+  const isListingPage = !isProductPage;
+
+  pfLog("BOOT", { path, isEshopFamily, isProductPage, isListingPage });
+
+  // =========================
+  // Helpers
+  // =========================
+  function isClosedDay(dateObj) {
+    return CONFIG.joursFermes.includes(dateObj.getDay());
+  }
+
+  function addWorkingDays(startDate, workingDaysToAdd) {
+    const d = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    let added = 0;
+    while (added < workingDaysToAdd) {
+      d.setDate(d.getDate() + 1);
+      if (!isClosedDay(d)) added++;
+    }
+    return d;
+  }
+
+  function toYMD(dateObj) {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const d = String(dateObj.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  // =========================
+  // Modal (popup)
+  // =========================
+  const IDS = {
+    modal: "pf-modal-v1",
+    style: "pf-modal-style-v1",
+    openBtn: "pf-openbtn-v1"
+  };
+
+  function ensureStyles() {
+    if (document.getElementById(IDS.style)) return;
+
+    const style = document.createElement("style");
+    style.id = IDS.style;
+
+    style.textContent = `
+      #${IDS.modal}{
+        position:fixed;inset:0;z-index:999999;display:none;
+        align-items:center;justify-content:center;padding:18px;
+        font-family: var(--body-font-font-family);
+      }
+      #${IDS.modal} [data-pf-backdrop]{position:absolute;inset:0;background:rgba(0,0,0,.52);backdrop-filter:blur(2px);}
+
+      #${IDS.modal} [data-pf-panel]{
+        position:relative;width:min(760px,94vw);background:#fff;
+        border-radius:0;
+        box-shadow:0 18px 60px rgba(0,0,0,.28);
+        overflow:visible;
+        max-height: 92vh;
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      #${IDS.modal} [data-pf-header]{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px 18px 10px;border-bottom:1px solid rgba(0,0,0,.08);}
+      #${IDS.modal} [data-pf-title]{font-size:20px;font-weight:700;line-height:1.2;}
+      #${IDS.modal} [data-pf-sub]{margin-top:6px;font-size:14px;opacity:.8;}
+
+      #${IDS.modal} [data-pf-close]{border:0;background:transparent;font-size:26px;line-height:1;cursor:pointer;padding:6px 10px;border-radius:0;}
+      #${IDS.modal} [data-pf-close]:hover{background:rgba(0,0,0,.06);}
+
+      #${IDS.modal} [data-pf-body]{padding:16px 18px 18px;}
+
+      #${IDS.modal} .pf-card{
+        border:1px solid rgba(0,0,0,.10);
+        border-radius:0;
+        padding:14px;
+      }
+
+      #${IDS.modal} .pf-mode{display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
+
+      #${IDS.modal} .pf-radio{
+        display:inline-flex;gap:10px;align-items:center;
+        padding:10px 12px;border:1px solid rgba(0,0,0,.12);
+        border-radius:0;
+        cursor:pointer;user-select:none;
+        background: var(--solidHeaderBackgroundColor);
+      }
+
+      #pf-modal-v1 .pf-radio input[type="radio"]{accent-color: var(--paragraphMediumColor);}
+      #${IDS.modal} .pf-radio input{transform:scale(1.1);}
+
+      #${IDS.modal} .pf-help{margin-top:10px;font-size:14px;opacity:.85;}
+      #${IDS.modal} label.pf-label{display:block;font-size:13px;font-weight:600;margin-bottom:8px;opacity:.85;}
+
+      /* Inputs + Selects */
+      #pf-modal-v1 input.pf-input,
+      #pf-modal-v1 select.pf-input{
+        width:100%;height:48px;
+        border-radius:0;
+        border:1px solid rgba(0,0,0,.18);
+        padding:12px 14px;font-size:15px;background:#fff;
+        outline:none;box-sizing:border-box;
+        font-family: var(--body-font-font-family);
+      }
+      #${IDS.modal} input.pf-input:focus,
+      #${IDS.modal} select.pf-input:focus{
+        border-color:rgba(0,0,0,.45);
+        box-shadow:0 0 0 4px rgba(0,0,0,.08);
+      }
+
+      #pf-modal-v1 .pf-actions{
+        display:flex;gap:12px;justify-content:space-between;align-items:center;margin-top:14px;
+      }
+      #pf-modal-v1 .pf-status{
+        margin:0;font-size:14px;opacity:.85;min-height:18px;flex:1;
+      }
+
+      #${IDS.modal} button.pf-btn{
+        height:44px;padding:0 16px;
+        border-radius:0;
+        border:1px solid rgba(0,0,0,.18);
+        background: var(--paragraphMediumColor);
+        color:#fff;
+        cursor:pointer;font-size:15px;font-weight:600;
+        font-family: var(--body-font-font-family);
+      }
+      #pf-modal-v1 button.pf-btn *{
+        color:#fff !important;
+        -webkit-text-fill-color:#fff !important;
+      }
+      #pf-modal-v1 button.pf-btn:visited,
+      #pf-modal-v1 button.pf-btn:active,
+      #pf-modal-v1 button.pf-btn:focus{
+        -webkit-text-fill-color:#fff;
+        color:#fff;
+        outline:none;
+      }
+
+      /* Floating button - iOS force */
+      #pf-openbtn-v1{
+        -webkit-appearance:none !important;
+        appearance:none !important;
+        color:#fff !important;
+        -webkit-text-fill-color:#fff !important;
+        text-decoration:none !important;
+        transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+      }
+      #pf-openbtn-v1:link,
+      #pf-openbtn-v1:visited,
+      #pf-openbtn-v1:active,
+      #pf-openbtn-v1:focus{
+        color:#fff !important;
+        -webkit-text-fill-color:#fff !important;
+        outline:none !important;
+      }
+      #pf-openbtn-v1:hover{
+        transform: translateY(-1px);
+        box-shadow: 0 14px 34px rgba(0,0,0,.18);
+        filter: brightness(.97);
+      }
+      #pf-openbtn-v1:active{
+        transform: translateY(0);
+        box-shadow: 0 10px 30px rgba(0,0,0,.14);
+        filter: brightness(1);
+      }
+
+      .flatpickr-calendar{z-index:1000000!important;}
+      #pf-modal-v1 .flatpickr-wrapper{width:100%;}
+      #pf-modal-v1 .flatpickr-wrapper input{width:100%;}
+      #pf-modal-v1 .flatpickr-calendar{margin-top:10px;}
+
+      #pf-modal-v1 .pf-row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;}
+      #pf-modal-v1 .pf-row-2>div{min-width:0;}
+      @media (max-width:640px){#pf-modal-v1 .pf-row-2{grid-template-columns:1fr;}}
+
+      /* Mobile: force flatpickr to be fully visible */
+      @media (max-width: 640px){
+        #pf-modal-v1 .flatpickr-calendar{
+          position: fixed !important;
+          top: 50% !important;
+          left: 50% !important;
+          right: auto !important;
+          bottom: auto !important;
+          transform: translate(-50%, -50%) !important;
+          max-width: calc(100vw - 24px) !important;
+          max-height: calc(100vh - 24px) !important;
+          z-index: 1000005 !important;
+        }
+        #pf-modal-v1 .flatpickr-calendar.open{ display:block !important; }
+      }
+
+      /* Remove flatpickr arrow/triangle */
+      #pf-modal-v1 .flatpickr-calendar:before,
+      #pf-modal-v1 .flatpickr-calendar:after{
+        display:none !important;
+        content:none !important;
+      }
+    `;
+
+    document.head.appendChild(style);
+    pfLog("Styles injected");
+  }
+
+  function ensureModal() {
+    if (document.getElementById(IDS.modal)) return;
+
+    ensureStyles();
+
+    const modalEl = document.createElement("div");
+    modalEl.id = IDS.modal;
+
+    modalEl.innerHTML = `
+      <div data-pf-backdrop></div>
+      <div data-pf-panel>
+        <div data-pf-header>
+          <div>
+            <div data-pf-title>How would you like to receive your order?</div>
+            <div data-pf-sub>Please choose delivery or in-store pickup.</div>
+          </div>
+          <button type="button" data-pf-close aria-label="Close">×</button>
+        </div>
+        <div data-pf-body></div>
+      </div>
+    `;
+
+    document.body.appendChild(modalEl);
+
+    const close = () => {
+      modalEl.style.display = "none";
+      document.documentElement.style.overflow = "";
+      document.body.style.overflow = "";
+    };
+
+    modalEl.querySelector("[data-pf-close]").addEventListener("click", close);
+    modalEl.querySelector("[data-pf-backdrop]").addEventListener("click", close);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modalEl.style.display !== "none") close();
+    });
+
+    pfLog("Modal injected");
+  }
+
+  // pickers
+  let fpPickupDate = null;
+  let fpPickupTime = null;
+  let fpDeliveryDate = null;
+
+  function destroyPickers() {
+    try { if (fpPickupDate) fpPickupDate.destroy(); } catch {}
+    try { if (fpPickupTime) fpPickupTime.destroy(); } catch {}
+    try { if (fpDeliveryDate) fpDeliveryDate.destroy(); } catch {}
+    fpPickupDate = null;
+    fpPickupTime = null;
+    fpDeliveryDate = null;
+  }
+
+  function openModal() {
+    pfLog("openModal()");
+    ensureModal();
+
+    const modalEl = document.getElementById(IDS.modal);
+    const body = modalEl.querySelector("[data-pf-body]");
+    body.innerHTML = "";
+    destroyPickers();
+
+    const earliest = addWorkingDays(new Date(), CONFIG.delaiJoursOuvrables);
+    const earliestYMD = toYMD(earliest);
+    const choice = pfDumpChoice("Choice at open");
+
+    const wrap = document.createElement("div");
+
+    wrap.innerHTML = `
+      <div class="pf-card">
+        <div class="pf-mode">
+          <label class="pf-radio">
+            <input type="radio" name="pf_reception" value="delivery">
+            <span>Delivery</span>
+          </label>
+          <label class="pf-radio">
+            <input type="radio" name="pf_reception" value="pickup">
+            <span>In-store pickup</span>
+          </label>
+        </div>
+
+        <div class="pf-help" data-pf-info="delivery" style="display:none;">
+          ${CONFIG.livraisonZoneTexte}
+        </div>
+
+        <div class="pf-help" data-pf-info="pickup" style="display:none;">
+          ${CONFIG.pickupAdresseTexte}
+        </div>
+      </div>
+
+      <div class="pf-card" data-pf-delivery-fields style="display:none; margin-top: 14px;">
+        <div class="pf-row-2">
+          <div>
+            <label class="pf-label">Delivery date</label>
+            <input class="pf-input" type="text" data-pf-delivery-date placeholder="Select a date" />
+          </div>
+          <div>
+            <label class="pf-label">Delivery time</label>
+            <select class="pf-input" data-pf-delivery-time>
+              <option value="" selected disabled>Select a time</option>
+              <option value="Morning">Morning</option>
+              <option value="Afternoon">Afternoon</option>
+              <option value="End of the day">End of the day</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="pf-card" data-pf-pickup-fields style="display:none; margin-top: 14px;">
+        <div class="pf-row-2">
+          <div>
+            <label class="pf-label">Pickup date</label>
+            <input class="pf-input" type="text" data-pf-pickup-date placeholder="Select a date" />
+          </div>
+          <div>
+            <label class="pf-label">Pickup time</label>
+            <input class="pf-input" type="text" data-pf-pickup-time placeholder="Select a time" />
+          </div>
+        </div>
+      </div>
+
+      <div class="pf-actions">
+        <div class="pf-status" data-pf-status></div>
+        <button type="button" class="pf-btn" data-pf-save>Save</button>
+      </div>
+    `;
+
+    body.appendChild(wrap);
+
+    const radioDelivery = wrap.querySelector("input[value='delivery']");
+    const radioPickup = wrap.querySelector("input[value='pickup']");
+    const infoDelivery = wrap.querySelector("[data-pf-info='delivery']");
+    const infoPickup = wrap.querySelector("[data-pf-info='pickup']");
+
+    const deliveryFields = wrap.querySelector("[data-pf-delivery-fields]");
+    const pickupFields = wrap.querySelector("[data-pf-pickup-fields]");
+
+    const deliveryDateInput = wrap.querySelector("[data-pf-delivery-date]");
+    const deliveryTimeSelect = wrap.querySelector("[data-pf-delivery-time]");
+    const pickupDateInput = wrap.querySelector("[data-pf-pickup-date]");
+    const pickupTimeInput = wrap.querySelector("[data-pf-pickup-time]");
+
+    const saveBtn = wrap.querySelector("[data-pf-save]");
+    const status = wrap.querySelector("[data-pf-status]");
+
+    function refreshUI(mode) {
+      const isPickup = mode === "pickup";
+      const isDelivery = mode === "delivery";
+      if (infoDelivery) infoDelivery.style.display = isDelivery ? "block" : "none";
+      if (infoPickup) infoPickup.style.display = isPickup ? "block" : "none";
+      if (deliveryFields) deliveryFields.style.display = isDelivery ? "block" : "none";
+      if (pickupFields) pickupFields.style.display = isPickup ? "block" : "none";
+    }
+
+    const isMobile = window.matchMedia("(max-width: 640px)").matches;
+    const panelEl = modalEl.querySelector("[data-pf-panel]");
+
+    if (typeof flatpickr === "function") {
+      fpDeliveryDate = flatpickr(deliveryDateInput, {
+        locale: "en",
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "l, F j, Y",
+        minDate: earliestYMD,
+        disableMobile: true,
+        static: !isMobile,
+        appendTo: panelEl,
+        position: "auto",
+        disable: [(d) => isClosedDay(d)]
+      });
+
+      fpPickupDate = flatpickr(pickupDateInput, {
+        locale: "en",
+        dateFormat: "Y-m-d",
+        altInput: true,
+        altFormat: "l, F j, Y",
+        minDate: earliestYMD,
+        disableMobile: true,
+        static: !isMobile,
+        appendTo: panelEl,
+        position: "auto",
+        disable: [(d) => isClosedDay(d)]
+      });
+
+      fpPickupTime = flatpickr(pickupTimeInput, {
+        enableTime: true,
+        noCalendar: true,
+        dateFormat: "H:i",
+        time_24hr: true,
+        minTime: CONFIG.heureOuverture,
+        maxTime: CONFIG.heureFermeture,
+        disableMobile: true,
+        static: !isMobile,
+        appendTo: panelEl,
+        position: "auto",
+        locale: "en"
+      });
+    } else {
+      pfWarn("flatpickr not found on page");
+    }
+
+    // restore mode
+    const storedMode = choice?.mode;
+    const normalizedMode =
+      storedMode === "livraison" ? "delivery" :
+      storedMode === "retrait"   ? "pickup"   :
+      storedMode;
+
+    if (normalizedMode === "delivery") {
+      radioDelivery.checked = true;
+      refreshUI("delivery");
+    } else if (normalizedMode === "pickup") {
+      radioPickup.checked = true;
+      refreshUI("pickup");
+    } else {
+      refreshUI(null);
+    }
+
+    // restore values
+    if (choice?.deliveryDate && fpDeliveryDate) fpDeliveryDate.setDate(choice.deliveryDate, true, "Y-m-d");
+    if (choice?.pickupDate && fpPickupDate) fpPickupDate.setDate(choice.pickupDate, true, "Y-m-d");
+    if (choice?.pickupTime && fpPickupTime) fpPickupTime.setDate(choice.pickupTime, true, "H:i");
+    if (choice?.deliveryTime && deliveryTimeSelect) deliveryTimeSelect.value = choice.deliveryTime;
+
+    radioDelivery.addEventListener("change", () => refreshUI("delivery"));
+    radioPickup.addEventListener("change", () => refreshUI("pickup"));
+
+    saveBtn.addEventListener("click", () => {
+      const mode = radioDelivery.checked ? "delivery" : (radioPickup.checked ? "pickup" : null);
+
+      const deliveryDate = (deliveryDateInput.value || "").trim();
+      const deliveryTime = (deliveryTimeSelect.value || "").trim(); // Morning / Afternoon / End of the day
+      const pickupDate = (pickupDateInput.value || "").trim();
+      const pickupTime = (pickupTimeInput.value || "").trim(); // HH:mm
+
+      status.textContent = "";
+
+      if (!mode) {
+        status.textContent = "Please choose delivery or in-store pickup.";
+        return;
+      }
+
+      if (mode === "delivery") {
+        if (!deliveryDate) { status.textContent = "Please select a delivery date."; return; }
+        if (!deliveryTime) { status.textContent = "Please select a delivery time."; return; }
+      }
+
+      if (mode === "pickup") {
+        if (!pickupDate) { status.textContent = "Please select a pickup date."; return; }
+        if (!pickupTime) { status.textContent = "Please select a pickup time."; return; }
+      }
+
+      writeChoice({
+        mode,
+        deliveryDate: mode === "delivery" ? deliveryDate : "",
+        deliveryTime: mode === "delivery" ? deliveryTime : "",
+        pickupDate: mode === "pickup" ? pickupDate : "",
+        pickupTime: mode === "pickup" ? pickupTime : "",
+        savedAt: Date.now()
+      });
+
+      status.textContent = "Saved.";
+      setTimeout(() => {
+        modalEl.style.display = "none";
+        document.documentElement.style.overflow = "";
+        document.body.style.overflow = "";
+      }, 250);
+    });
+
+    // lock scroll while modal open
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+
+    modalEl.style.display = "flex";
+  }
+
+  // =========================
+  // Floating button
+  // =========================
+  function injectOpenButton() {
+    if (document.getElementById(IDS.openBtn)) return;
+
+    const root =
+      document.querySelector("#page") ||
+      document.querySelector("#siteWrapper") ||
+      document.querySelector("main") ||
+      document.body;
+
+    const btn = document.createElement("button");
+    btn.id = IDS.openBtn;
+    btn.type = "button";
+    btn.textContent = "Edit delivery / pickup";
+    btn.style.cssText = `
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      color: #fff;
+      z-index: 999998;
+      height: 44px;
+      padding: 0 14px;
+      border-radius: 0;
+      border: 1px solid rgba(0,0,0,.18);
+      background: var(--solidHeaderBackgroundColor);
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: 0 10px 30px rgba(0,0,0,.14);
+      font-family: var(--body-font-font-family);
+    `;
+    btn.addEventListener("click", openModal);
+
+    root.appendChild(btn);
+    pfLog("Open button injected");
+  }
+
+  // =========================
+  // React/Squarespace input/select fill
+  // =========================
+  function fillSquarespaceField(el, value) {
+    if (!el) return;
+
+    try {
+      const before = el.value;
+
+      // React tracker (for inputs)
+      const tracker = el._valueTracker;
+      if (tracker) tracker.setValue(el.value);
+
+      const tag = (el.tagName || "").toUpperCase();
+      let setter = null;
+
+      if (tag === "SELECT") {
+        setter = Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")?.set;
+      } else {
+        setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+      }
+
+      if (setter) setter.call(el, value);
+      else el.value = value;
+
+      const events = ["click","focus","keydown","keypress","textInput","input","change","blur"];
+      events.forEach(type => el.dispatchEvent(new Event(type, { bubbles: true, cancelable: true })));
+
+      pfLog("fillSquarespaceField()", { tag, name: el.name, before, after: el.value, setTo: value });
+    } catch (e) {
+      pfErr("fillSquarespaceField error", e);
+    }
+  }
+
+  /* =========================
+     AUTO-FILL Squarespace Add-to-cart Modal
+     Expected product-form field labels:
+       - Pickup / delivery date
+       - Pickup time
+       - Delivery time
+     ========================= */
+
+  function pfIsVisible(el) {
+    if (!el) return false;
+    const cs = getComputedStyle(el);
+    if (cs.display === "none" || cs.visibility === "hidden" || cs.opacity === "0") return false;
+    const r = el.getBoundingClientRect();
+    return r.width > 10 && r.height > 10;
+  }
+
+  function findReceptionDialog() {
+    const dialogs = [...document.querySelectorAll('[role="dialog"]')].filter(pfIsVisible);
+
+    const overlays = [...document.querySelectorAll("body *")].filter(el => {
+      if (!pfIsVisible(el)) return false;
+      const cs = getComputedStyle(el);
+      if (cs.position !== "fixed") return false;
+      const r = el.getBoundingClientRect();
+      return r.width > window.innerWidth * 0.6 && r.height > window.innerHeight * 0.4;
+    });
+
+    const candidates = [...dialogs, ...overlays];
+
+    const filtered = candidates.filter(el => {
+      const t = (el.textContent || "").toLowerCase();
+      const norm = t.replace(/\s+/g, " ");
+
+      const hasDate = norm.includes("pickup / delivery date") || norm.includes("pickup/delivery date");
+      const hasPickupTime = norm.includes("pickup time");
+      const hasDeliveryTime = norm.includes("delivery time");
+
+      // accept dialogs that contain date + at least one of the time fields
+      if (!hasDate) return false;
+      if (!(hasPickupTime || hasDeliveryTime)) return false;
+
+      const inputs = el.querySelectorAll("input, textarea, select");
+      return inputs.length >= 2;
+    });
+
+    filtered.sort((a, b) => (a.textContent || "").length - (b.textContent || "").length);
+    return filtered[0] || null;
+  }
+
+  function getFieldInputByLabelText(container, labelText) {
+    const want = labelText.toLowerCase();
+
+    const labels = [...container.querySelectorAll("label")];
+    const lab = labels.find(l => (l.textContent || "").toLowerCase().includes(want));
+    if (lab) {
+      const forId = lab.getAttribute("for");
+      if (forId) {
+        const byFor = container.querySelector(`#${CSS.escape(forId)}`);
+        if (byFor) return byFor;
+      }
+      const item = lab.closest(".form-item") || lab.parentElement;
+      const near = item?.querySelector("input, textarea, select");
+      if (near) return near;
+    }
+
+    const items = [...container.querySelectorAll(".form-item")];
+    const it = items.find(x => (x.textContent || "").toLowerCase().includes(want));
+    return it?.querySelector("input, textarea, select") || null;
+  }
+
+  function findModalAddToCartButton(modal) {
+    const btns = [...modal.querySelectorAll("button, input[type='submit'], input[type='button']")];
+
+    const cleaned = btns.filter(b => {
+      const cls = (b.className || "").toString();
+      const txt = ((b.textContent || b.value || "") + "").toLowerCase();
+      if (cls.includes("edit-tool")) return false;
+      if (txt.includes("edit") || txt.includes("modifier")) return false;
+      return true;
+    });
+
+    const byDataTest = cleaned.find(b => b.getAttribute?.("data-test") === "add-to-cart");
+    if (byDataTest) return byDataTest;
+
+    const byText = cleaned.find(b => {
+      const txt = ((b.textContent || b.value || "") + "").toLowerCase().trim();
+      return txt.includes("add to cart") || txt.includes("add to card") || txt.includes("ajouter au panier") || txt === "ajouter";
+    });
+    if (byText) return byText;
+
+    const bySubmit = cleaned.find(b =>
+      (b.tagName === "INPUT" && b.type === "submit") ||
+      (b.tagName === "BUTTON" && b.type === "submit")
+    );
+    if (bySubmit) return bySubmit;
+
+    const last = cleaned.reverse().find(b => ((b.textContent || b.value || "") + "").trim().length > 0);
+    return last || null;
+  }
+
+  function hideModalOverlay(modal, hidden) {
+    if (!modal) return;
+    if (hidden) {
+      modal.dataset.pfHidden = "1";
+      modal.style.visibility = "hidden";
+      modal.style.pointerEvents = "none";
+      modal.style.opacity = "0";
+    } else if (modal.dataset.pfHidden === "1") {
+      modal.style.visibility = "";
+      modal.style.pointerEvents = "";
+      modal.style.opacity = "";
+      delete modal.dataset.pfHidden;
+    }
+  }
+
+  function autoFillSquarespaceReceptionModal() {
+    const choice = pfReadChoice();
+    pfLog("AUTO-FILL start", choice);
+
+    const ok =
+      choice &&
+      choice.mode &&
+      (
+        (choice.mode === "pickup" && choice.pickupDate && choice.pickupTime) ||
+        (choice.mode === "delivery" && choice.deliveryDate && choice.deliveryTime)
+      );
+
+    if (!ok) {
+      pfWarn("AUTO-FILL aborted: missing required fields");
+      return false;
+    }
+
+    let tries = 0;
+    const t = setInterval(() => {
+      tries++;
+
+      const modal = findReceptionDialog();
+      if (!modal) {
+        if (tries > 120) { clearInterval(t); pfWarn("AUTO-FILL: dialog not found"); }
+        return;
+      }
+
+      const dateInput =
+        getFieldInputByLabelText(modal, "Pickup / delivery date") ||
+        getFieldInputByLabelText(modal, "Pickup/Delivery date") ||
+        getFieldInputByLabelText(modal, "Pickup / Delivery date");
+
+      const pickupTimeInput = getFieldInputByLabelText(modal, "Pickup time");
+      const deliveryTimeInput = getFieldInputByLabelText(modal, "Delivery time"); // should be SELECT
+      const submitBtn = findModalAddToCartButton(modal);
+
+      pfLog("AUTO-FILL scan", {
+        tries,
+        hasDateInput: !!dateInput,
+        hasPickupTimeInput: !!pickupTimeInput,
+        hasDeliveryTimeInput: !!deliveryTimeInput,
+        submitBtn: !!submitBtn
+      });
+
+      if (!submitBtn) {
+        if (tries > 120) { clearInterval(t); pfWarn("AUTO-FILL: missing submit (timeout)"); }
+        return;
+      }
+      if (!dateInput) {
+        if (tries > 120) { clearInterval(t); pfWarn("AUTO-FILL: missing date input (timeout)"); }
+        return;
+      }
+      if (choice.mode === "pickup" && !pickupTimeInput) {
+        if (tries > 120) { clearInterval(t); pfWarn("AUTO-FILL: missing pickup time input (timeout)"); }
+        return;
+      }
+      if (choice.mode === "delivery" && !deliveryTimeInput) {
+        if (tries > 120) { clearInterval(t); pfWarn("AUTO-FILL: missing delivery time input (timeout)"); }
+        return;
+      }
+
+      hideModalOverlay(modal, true);
+
+      if (choice.mode === "pickup") {
+        fillSquarespaceField(dateInput, choice.pickupDate || "");
+        fillSquarespaceField(pickupTimeInput, choice.pickupTime || "");
+        if (deliveryTimeInput) fillSquarespaceField(deliveryTimeInput, ""); // optional clear
+      } else {
+        fillSquarespaceField(dateInput, choice.deliveryDate || "");
+        fillSquarespaceField(deliveryTimeInput, choice.deliveryTime || "");
+        if (pickupTimeInput) fillSquarespaceField(pickupTimeInput, ""); // optional clear
+      }
+
+      try {
+        submitBtn.click();
+        pfLog("AUTO-FILL: submit clicked");
+      } catch (e) {
+        pfWarn("AUTO-FILL: submit click failed", e);
+      }
+
+      clearInterval(t);
+    }, 50);
+
+    return true;
+  }
+
+  // =========================
+  // Intercept Add to cart
+  // =========================
+  function interceptMainAddToCart() {
+    const mainBtn =
+      document.querySelector('button[type="submit"][data-test="add-to-cart"]') ||
+      document.querySelector("button.sqs-add-to-cart-button") ||
+      document.querySelector('button[type="submit"]');
+
+    if (!mainBtn || mainBtn.dataset.pfIntercepted === "1") return;
+
+    mainBtn.addEventListener("click", (e) => {
+      if (mainBtn.dataset.pfBypassOnce === "1") return;
+
+      const choice = pfReadChoice();
+
+      const ok =
+        choice &&
+        choice.mode &&
+        (
+          (choice.mode === "delivery" && choice.deliveryDate && choice.deliveryTime) ||
+          (choice.mode === "pickup" && choice.pickupDate && choice.pickupTime)
+        );
+
+      if (!ok) {
+        e.preventDefault();
+        e.stopPropagation();
+        openModal();
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      mainBtn.dataset.pfBypassOnce = "1";
+      setTimeout(() => {
+        try {
+          mainBtn.click();
+          autoFillSquarespaceReceptionModal();
+        } finally {
+          delete mainBtn.dataset.pfBypassOnce;
+        }
+      }, 0);
+
+    }, true);
+
+    mainBtn.dataset.pfIntercepted = "1";
+    pfLog("interceptMainAddToCart attached", mainBtn);
+  }
+
+  // =========================
+  // RUN
+  // =========================
+  ensureStyles();
+  injectOpenButton();
+
+  if (isProductPage) {
+    setTimeout(() => {
+      const choice = pfReadChoice();
+      const hasChoice =
+        choice &&
+        choice.mode &&
+        (
+          (choice.mode === "delivery" && choice.deliveryDate && choice.deliveryTime) ||
+          (choice.mode === "pickup" && choice.pickupDate && choice.pickupTime)
+        );
+
+      if (!hasChoice) openModal();
+    }, 5000);
+
+    const t = setInterval(() => interceptMainAddToCart(), 250);
+    setTimeout(() => clearInterval(t), 12000);
+  }
+})();
+</script>

@@ -1,0 +1,1134 @@
+//HEADER
+<style>
+  .header .header-announcement-bar-wrapper {
+    border-bottom: none !important;
+  }
+</style>
+<style>
+  #training-directory,
+  #training-directory * { box-sizing: border-box; }
+
+  #training-directory{
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "controls"
+      "map"
+      "legend"
+      "table"
+      "legal";
+    gap: 18px;
+    align-items: start;
+  }
+
+  .controls { grid-area: controls; }
+  #map { grid-area: map; }
+  #legend { grid-area: legend; }
+  .table-wrap { grid-area: table; }
+  .legal-note { grid-area: legal; }
+
+  .controls{
+    display: grid;
+    grid-template-columns: repeat(3, minmax(160px, 1fr)) minmax(220px, 1fr);
+    gap: 10px;
+    align-items: center;
+  }
+
+  .controls select,
+  .controls input{
+    width: 100%;
+    max-width: 100%;
+    height: 42px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(0,0,0,.16);
+    background: #fff;
+    font-size: 14px;
+    margin: 0;
+  }
+
+  #filter-reset{
+    grid-column: 1 / -1;
+    justify-self: start;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(0,0,0,.16);
+    background: #fff;
+    cursor: pointer;
+  }
+
+  #map{
+    height: min(520px, 70vh);
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,.10);
+    background: #fff;
+  }
+
+  #legend{
+    background: #fff;
+    border: 1px solid rgba(0,0,0,.10);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+  }
+
+  .legend-item{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 999px;
+    transition: background .2s ease;
+    text-align: left;
+  }
+
+  .legend-item:hover{
+    background: rgba(0,0,0,.05);
+  }
+
+  .dot{
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    display: inline-block;
+  }
+
+  .table-wrap{
+    overflow: auto;
+    border: 1px solid rgba(0,0,0,.10);
+    border-radius: 12px;
+    background: #fff;
+  }
+
+  #training-directory table{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin: 0;
+  }
+
+  #training-directory th,
+  #training-directory td{
+    text-align: left;
+    padding: 12px;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+    vertical-align: top;
+    white-space: nowrap;
+  }
+
+  #training-directory td:nth-child(3),
+  #training-directory th:nth-child(3){
+    white-space: normal;
+  }
+
+  #training-directory tr[data-id]{ cursor: pointer; }
+  #training-directory tr[data-id]:hover{ background: rgba(0,0,0,.03); }
+
+  .pills{
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0;
+  }
+
+  .pill{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(0,0,0,.10);
+    font-size: 13px;
+  }
+
+  .modal-backdrop{
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 18px;
+  }
+
+  .modal{
+    width: 100%;
+    max-width: 560px;
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid rgba(0,0,0,.10);
+    padding: 16px;
+  }
+
+  .modal h3{ margin: 0 0 6px 0; font-size: 18px; }
+  .modal .meta{ opacity: .75; margin-bottom: 12px; }
+  .modal .close{ float: right; cursor: pointer; border: 0; background: transparent; font-size: 20px; }
+
+  .contact-list{
+    margin-top: 12px;
+    display: grid;
+    gap: 6px;
+  }
+
+  .contact-list a{
+    text-decoration: underline;
+  }
+
+  .legal-note{
+    margin-top: 4px;
+    font-size: 13px;
+    line-height: 1.5;
+    opacity: .8;
+  }
+
+  @media (max-width: 980px){
+    .controls{
+      grid-template-columns: 1fr 1fr;
+    }
+
+    #filter-reset{
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 640px){
+    .controls{
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  #training-directory{
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "controls"
+    "activeFilters"
+    "map"
+    "legend"
+    "table"
+    "legal";
+  gap: 18px;
+  align-items: start;
+}
+
+.controls { grid-area: controls; }
+#active-filters { grid-area: activeFilters; }
+#map { grid-area: map; }
+#legend { grid-area: legend; }
+.table-wrap { grid-area: table; }
+.legal-note { grid-area: legal; }
+
+.active-filters{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-tag{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,.12);
+  background: var(--white-hsl);
+  font-size: 13px;
+  line-height: 14px;
+}
+
+.filter-tag button{
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+}
+
+.legend-item{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.legend-item:hover{
+  background: rgba(0,0,0,.05);
+}
+
+.contact-list{
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.contact-row{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  word-break: break-word;
+}
+
+.contact-icon{
+  width: 16px;
+  display: inline-flex;
+  justify-content: center;
+  flex: 0 0 16px;
+}
+
+.contact-row a{
+  text-decoration: underline;
+}
+  
+  .modal-divider{
+  margin: 14px 0 12px;
+  height: 1px;
+  background: rgba(0,0,0,.10);
+}
+</style>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+
+//FOOTER
+
+<script>
+  function esc(s){
+    return String(s ?? "").replace(/[&<>"']/g, c => ({
+      '&':'&amp;',
+      '<':'&lt;',
+      '>':'&gt;',
+      '"':'&quot;',
+      "'":'&#39;'
+    }[c]));
+  }
+
+  const WORKER_ENDPOINT = "https://training-directory-api.kinegastauer.workers.dev/api/professionals";
+
+  async function fetchAll(){
+    const res = await fetch(WORKER_ENDPOINT);
+    if (!res.ok) throw new Error("Proxy error " + res.status);
+    const data = await res.json();
+    return data.records || [];
+  }
+
+  function uniqSorted(arr){
+    return Array.from(new Set(arr.filter(Boolean))).sort((a,b)=> String(a).localeCompare(String(b)));
+  }
+
+  function normalizeText(value){
+    return String(value || "").trim().replace(/\s+/g, " ");
+  }
+
+  function getProfessionList(value){
+    if (Array.isArray(value)) {
+      return value.map(v => normalizeText(v)).filter(Boolean);
+    }
+    return normalizeText(value) ? [normalizeText(value)] : [];
+  }
+
+  function formatProfessionDisplay(value){
+    return getProfessionList(value).join(", ");
+  }
+
+  function colorForTraining(trainings){
+    const list = Array.isArray(trainings) ? trainings : [];
+    const first = list.find(t => t && t.color);
+    return first?.color || "#7f8c8d";
+  }
+
+  function buildTrainingMap(rows){
+    const map = new Map();
+
+    rows.forEach(row => {
+      (row.Trainings || []).forEach(t => {
+        if (!t?.name) return;
+        if (!map.has(t.name)) {
+          map.set(t.name, {
+            name: t.name,
+            color: t.color || "#7f8c8d"
+          });
+        }
+      });
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  function normalizeUrl(url){
+    const raw = String(url || "").trim();
+    if (!raw) return "";
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return `https://${raw}`;
+  }
+
+  function formatWebsiteLabel(url){
+    try {
+      const u = new URL(normalizeUrl(url));
+      return u.hostname.replace(/^www\./, "");
+    } catch {
+      return String(url || "").trim();
+    }
+  }
+
+  // ===== MARKERS =====
+
+  // Affichage : 1 ou 2 formations visibles.
+  // Si plus de 2, badge +N
+  function markerHtmlFromTrainings(trainings){
+    const list = Array.isArray(trainings) ? trainings : [];
+
+    const colors = list
+      .map(t => t?.color)
+      .filter(Boolean);
+
+    const visibleLimit = 2;
+    const extra = Math.max(0, colors.length - visibleLimit);
+    const visibleColors = colors.slice(0, visibleLimit);
+
+    if (!visibleColors.length) {
+      visibleColors.push("#7f8c8d");
+    }
+
+    const step = 100 / visibleColors.length;
+    const stops = visibleColors.map((c, i) => {
+      const start = (i * step).toFixed(2);
+      const end = ((i + 1) * step).toFixed(2);
+      return `${c} ${start}% ${end}%`;
+    }).join(", ");
+
+    return `
+      <div style="position:relative;width:22px;height:22px;">
+        <div style="
+          width:18px;
+          height:18px;
+          border-radius:999px;
+          background:${visibleColors.length === 1 ? esc(visibleColors[0]) : `conic-gradient(${stops})`};
+          border:2px solid #fff;
+          box-shadow:0 2px 6px rgba(0,0,0,.25);
+        "></div>
+
+        ${extra > 0 ? `
+          <div style="
+            position:absolute;
+            right:-13px;
+            top:-8px;
+            background:#fff;
+            border-radius:999px;
+            padding:0 4px;
+            min-width:16px;
+            text-align:center;
+            font-size:10px;
+            font-weight:600;
+            line-height:14px;
+            border:1px solid rgba(0,0,0,.2);
+            box-shadow:0 1px 3px rgba(0,0,0,.15);
+            z-index:2;
+          ">
+            +${extra}
+          </div>
+        ` : ""}
+      </div>
+    `;
+  }
+
+  // Marker groupé pour plusieurs pros à la même coordonnée
+  function markerHtmlForGroup(group){
+    const allTrainings = group.flatMap(p => Array.isArray(p.Trainings) ? p.Trainings : []);
+    const allColors = allTrainings.map(t => t?.color).filter(Boolean);
+    const uniqueColors = [...new Set(allColors)];
+
+    const visibleColors = uniqueColors.slice(0, 2);
+    const extraTrainings = Math.max(0, uniqueColors.length - 2);
+    const count = group.length;
+
+    if (!visibleColors.length) visibleColors.push("#7f8c8d");
+
+    const step = 100 / visibleColors.length;
+    const stops = visibleColors.map((c, i) => {
+      const start = (i * step).toFixed(2);
+      const end = ((i + 1) * step).toFixed(2);
+      return `${c} ${start}% ${end}%`;
+    }).join(", ");
+
+    return `
+      <div style="position:relative;width:28px;height:28px;">
+        <div style="
+          width:22px;
+          height:22px;
+          border-radius:999px;
+          background:${visibleColors.length === 1 ? esc(visibleColors[0]) : `conic-gradient(${stops})`};
+          border:2px solid #fff;
+          box-shadow:0 2px 6px rgba(0,0,0,.3);
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          font-size:11px;
+          font-weight:700;
+          color:#111;
+          background-clip:padding-box;
+        ">
+          ${count}
+        </div>
+
+        ${extraTrainings > 0 ? `
+          <div style="
+            position:absolute;
+            right:-10px;
+            top:-7px;
+            background:#fff;
+            border-radius:999px;
+            padding:0 4px;
+            min-width:16px;
+            text-align:center;
+            font-size:10px;
+            font-weight:600;
+            line-height:14px;
+            border:1px solid rgba(0,0,0,.2);
+            box-shadow:0 1px 3px rgba(0,0,0,.15);
+            z-index:2;
+          ">
+            +${extraTrainings}
+          </div>
+        ` : ""}
+      </div>
+    `;
+  }
+
+  // ===== CONTACT =====
+
+  function buildContactPopupHtml(p){
+    const rows = [];
+
+    if (p.Address) {
+      rows.push(`
+        <div class="contact-row">
+          <span class="contact-icon">📍</span>
+          <span>${esc(String(p.Address).trim())}</span>
+        </div>
+      `);
+    }
+
+    if (p.Phone) {
+      rows.push(`
+        <div class="contact-row">
+          <span class="contact-icon">📞</span>
+          <span>${esc(String(p.Phone).trim())}</span>
+        </div>
+      `);
+    }
+
+    if (p.Email) {
+      rows.push(`
+        <div class="contact-row">
+          <span class="contact-icon">✉️</span>
+          <a href="mailto:${esc(String(p.Email).trim())}">${esc(String(p.Email).trim())}</a>
+        </div>
+      `);
+    }
+
+    if (p.Website) {
+      const href = normalizeUrl(p.Website);
+      const label = formatWebsiteLabel(p.Website);
+
+      rows.push(`
+        <div class="contact-row">
+          <span class="contact-icon">🔗</span>
+          <a href="${esc(href)}" target="_blank" rel="noopener">${esc(label)}</a>
+        </div>
+      `);
+    }
+
+    if (!rows.length) return "";
+    return `<div class="contact-list">${rows.join("")}</div>`;
+  }
+
+  function buildContactTableHtml(p, stopPropagation = false){
+    const parts = [];
+
+    if (p.Phone) {
+      parts.push(`
+        <span${stopPropagation ? ' onclick="event.stopPropagation()"' : ""}>
+          ${esc(String(p.Phone).trim())}
+        </span>
+      `);
+    }
+
+    if (p.Email) {
+      parts.push(`
+        <a href="mailto:${esc(String(p.Email).trim())}"${stopPropagation ? ' onclick="event.stopPropagation()"' : ""}>
+          ${esc(String(p.Email).trim())}
+        </a>
+      `);
+    }
+
+    if (p.Website) {
+      const href = normalizeUrl(p.Website);
+      const label = formatWebsiteLabel(p.Website);
+
+      parts.push(`
+        <a href="${esc(href)}" target="_blank" rel="noopener"${stopPropagation ? ' onclick="event.stopPropagation()"' : ""}>
+          ${esc(label)}
+        </a>
+      `);
+    }
+
+    return parts.join(" · ");
+  }
+
+  // ===== MODAL =====
+
+  function ensureModal(){
+    if (document.getElementById("dir-modal-backdrop")) return;
+
+    const b = document.createElement("div");
+    b.id = "dir-modal-backdrop";
+    b.className = "modal-backdrop";
+    b.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true">
+        <button class="close" type="button" aria-label="Close">×</button>
+        <div id="dir-modal-content"></div>
+      </div>`;
+    document.body.appendChild(b);
+
+    b.addEventListener("click", (e) => {
+      if (e.target === b) closeModal();
+    });
+
+    b.querySelector(".close").addEventListener("click", closeModal);
+
+    function closeModal(){
+      b.style.display = "none";
+    }
+
+    window.__dirCloseModal = closeModal;
+  }
+
+  function openModalFor(p){
+    ensureModal();
+
+    const b = document.getElementById("dir-modal-backdrop");
+    const c = document.getElementById("dir-modal-content");
+
+    const trainings = (p.Trainings || []).map(t => {
+      const col = t.color || "#bdc3c7";
+      return `<span class="pill"><span class="dot" style="background:${esc(col)}"></span>${esc(t.name)}</span>`;
+    }).join("");
+
+    const metaParts = [
+      formatProfessionDisplay(p.Profession),
+      p.Specialization || "",
+      (p.City || p.Country) ? `${p.City || ""}${p.City && p.Country ? " " : ""}${p.Country ? `(${p.Country})` : ""}` : ""
+    ].filter(Boolean);
+
+    const contactBlock = buildContactPopupHtml(p);
+    const divider = contactBlock ? `<div class="modal-divider"></div>` : "";
+
+    c.innerHTML = `
+      <h3>${esc(p.Name)}</h3>
+      <div class="meta">${esc(metaParts.join(" — "))}</div>
+      <div class="pills">${trainings || ""}</div>
+      ${divider}
+      ${contactBlock}
+    `;
+
+    b.style.display = "flex";
+  }
+
+  // ===== LEGEND =====
+
+  function renderLegend(rows, onLegendClick){
+    const el = document.getElementById("legend");
+    if (!el) return;
+
+    const trainings = buildTrainingMap(rows);
+
+    el.innerHTML = trainings.map(t =>
+      `<button type="button" class="legend-item" data-training="${esc(t.name)}">
+        <span class="dot" style="background:${esc(t.color)}"></span>
+        <span>${esc(t.name)}</span>
+      </button>`
+    ).join("");
+
+    el.querySelectorAll(".legend-item").forEach(btn => {
+      btn.addEventListener("click", () => {
+        onLegendClick(btn.getAttribute("data-training"));
+      });
+    });
+  }
+
+  // ===== FILTERS =====
+
+  function renderFilters(rows){
+    const countryEl = document.getElementById("filter-country");
+    const profEl = document.getElementById("filter-profession");
+    const trainingEl = document.getElementById("filter-training");
+
+    const countries = uniqSorted(rows.map(r => normalizeText(r.Country)));
+    const profs = uniqSorted(rows.flatMap(r => getProfessionList(r.Profession)));
+    const trainings = uniqSorted(
+      rows.flatMap(r => (r.Trainings || []).map(t => normalizeText(t.name)))
+    );
+
+    countryEl.innerHTML = `<option value="">Tous les pays</option>`;
+    profEl.innerHTML = `<option value="">Toutes les professions</option>`;
+    trainingEl.innerHTML = `<option value="">Toutes les formations</option>`;
+
+    countries.forEach(v => {
+      countryEl.insertAdjacentHTML("beforeend", `<option value="${esc(v)}">${esc(v)}</option>`);
+    });
+
+    profs.forEach(v => {
+      profEl.insertAdjacentHTML("beforeend", `<option value="${esc(v)}">${esc(v)}</option>`);
+    });
+
+    trainings.forEach(v => {
+      trainingEl.insertAdjacentHTML("beforeend", `<option value="${esc(v)}">${esc(v)}</option>`);
+    });
+  }
+
+  function renderActiveFilters(state, rerender){
+    const el = document.getElementById("active-filters");
+    if (!el) return;
+
+    const tags = [];
+
+    if (state.country) tags.push({ key: "country", label: `Pays : ${state.country}` });
+    if (state.profession) tags.push({ key: "profession", label: `Profession : ${state.profession}` });
+    if (state.training) tags.push({ key: "training", label: `Formation : ${state.training}` });
+    if (state.search) tags.push({ key: "search", label: `Recherche : ${state.search}` });
+
+    el.innerHTML = tags.map(tag => `
+      <span class="filter-tag">
+        <span>${esc(tag.label)}</span>
+        <button type="button" data-key="${esc(tag.key)}" aria-label="Supprimer le filtre">×</button>
+      </span>
+    `).join("");
+
+    el.querySelectorAll("button[data-key]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const key = btn.getAttribute("data-key");
+        if (!key) return;
+
+        state[key] = "";
+
+        if (key === "country") document.getElementById("filter-country").value = "";
+        if (key === "profession") document.getElementById("filter-profession").value = "";
+        if (key === "training") document.getElementById("filter-training").value = "";
+        if (key === "search") document.getElementById("filter-search").value = "";
+
+        rerender();
+      });
+    });
+  }
+
+  function applyFilters(rows, state){
+    const q = normalizeText(state.search || "").toLowerCase();
+
+    return rows.filter(p => {
+      const country = normalizeText(p.Country);
+      const professionList = getProfessionList(p.Profession);
+      const trainingNames = Array.isArray(p.Trainings) ? p.Trainings.map(t => normalizeText(t.name)) : [];
+
+      if (state.country && country !== state.country) return false;
+      if (state.profession && !professionList.includes(state.profession)) return false;
+      if (state.training && !trainingNames.includes(state.training)) return false;
+
+      if (q){
+        const hay = [
+          p.Name || "",
+          p.City || "",
+          p.Country || "",
+          p.Address || "",
+          ...professionList,
+          ...trainingNames,
+          p.Email || ""
+        ].join(" ").toLowerCase();
+
+        if (!hay.includes(q)) return false;
+      }
+
+      return true;
+    });
+  }
+
+  // ===== TABLE =====
+
+  function renderTable(rows, onSelect){
+    const el = document.getElementById("table");
+    if (!el) return;
+
+    const body = rows.map(p => {
+      const trainings = (p.Trainings || []).map(t => {
+        const col = t.color || "#bdc3c7";
+        return `<span title="${esc(t.name)}" class="dot" style="background:${esc(col)};margin-right:6px"></span>`;
+      }).join("");
+
+      const contact = buildContactTableHtml(p, true);
+
+      return `
+        <tr data-id="${esc(p.id)}">
+          <td>${esc(p.Name)}</td>
+          <td>${esc(formatProfessionDisplay(p.Profession))}</td>
+          <td>${esc(p.City)} (${esc(p.Country)})</td>
+          <td>${trainings}</td>
+          <td>${contact}</td>
+        </tr>`;
+    }).join("");
+
+    el.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>Profession</th>
+            <th>Ville</th>
+            <th>Formations</th>
+            <th>Contact</th>
+          </tr>
+        </thead>
+        <tbody>${body}</tbody>
+      </table>`;
+
+    el.querySelectorAll("tr[data-id]").forEach(tr => {
+      tr.addEventListener("click", () => onSelect(tr.getAttribute("data-id")));
+    });
+  }
+
+  // ===== MAP / SPIDERFY =====
+function initMap(allRows){
+  const map = L.map("map", {
+    scrollWheelZoom: true,
+    minZoom: 2
+  }).setView([50.6, 4.6], 6);
+
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19
+  }).addTo(map);
+
+  const markers = new Map();
+  let baseLayers = [];
+  let spiderLayers = [];
+  let activeSpiderKey = null;
+	let activeSpiderGroup = null;
+let isRefreshingSpiderfy = false;
+  
+  function clearBaseLayers(){
+    baseLayers.forEach(layer => map.removeLayer(layer));
+    baseLayers = [];
+    markers.clear();
+  }
+
+function clearSpiderfy(){
+  spiderLayers.forEach(layer => map.removeLayer(layer));
+  spiderLayers = [];
+  activeSpiderKey = null;
+  activeSpiderGroup = null;
+}
+
+  function groupByCoords(rows){
+    const groups = new Map();
+
+    rows.forEach(p => {
+      if (typeof p.Lat !== "number" || typeof p.Lng !== "number") return;
+
+      const key = `${p.Lat.toFixed(6)}|${p.Lng.toFixed(6)}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(p);
+    });
+
+    return groups;
+  }
+
+  function markerHtmlForGroup(group){
+    const count = group.length;
+
+    return `
+      <div style="position:relative;width:28px;height:28px;">
+        <div style="
+          width:22px;
+          height:22px;
+          border-radius:999px;
+          background:#111;
+          border:2px solid #fff;
+          box-shadow:0 2px 6px rgba(0,0,0,.3);
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          font-size:11px;
+          font-weight:700;
+          color:#fff;
+        ">
+          ${count}
+        </div>
+      </div>
+    `;
+  }
+
+function spiderfyGroup(groupKey, group){
+  spiderLayers.forEach(layer => map.removeLayer(layer));
+  spiderLayers = [];
+
+  activeSpiderKey = groupKey;
+  activeSpiderGroup = group;
+
+  if (!group.length) return;
+
+  const centerLatLng = L.latLng(group[0].Lat, group[0].Lng);
+  const centerPoint = map.latLngToLayerPoint(centerLatLng);
+  const count = group.length;
+
+  let points = [];
+
+  if (count === 2) {
+    const pixelRadius = 42;
+    points = [
+      L.point(centerPoint.x - pixelRadius, centerPoint.y),
+      L.point(centerPoint.x + pixelRadius, centerPoint.y)
+    ];
+  } else {
+    const pixelRadius = 52;
+    points = group.map((_, index) => {
+      const angle = (index / count) * Math.PI * 2;
+      return L.point(
+        centerPoint.x + Math.cos(angle) * pixelRadius,
+        centerPoint.y + Math.sin(angle) * pixelRadius
+      );
+    });
+  }
+
+  group.forEach((p, index) => {
+    const spiderLatLng = map.layerPointToLatLng(points[index]);
+
+    const line = L.polyline(
+      [centerLatLng, spiderLatLng],
+      {
+        color: "rgba(0,0,0,.25)",
+        weight: 1,
+        interactive: false
+      }
+    ).addTo(map);
+
+    const icon = L.divIcon({
+      className: "",
+      html: markerHtmlFromTrainings(p.Trainings),
+      iconSize: [22, 22],
+      iconAnchor: [11, 11]
+    });
+
+    const marker = L.marker(spiderLatLng, { icon }).addTo(map);
+
+    marker.on("click", (e) => {
+      if (e.originalEvent) e.originalEvent.stopPropagation();
+      openModalFor(p);
+    });
+
+    spiderLayers.push(line, marker);
+    markers.set(p.id, marker);
+  });
+}
+  
+  function renderMarkers(rows){
+    clearBaseLayers();
+    clearSpiderfy();
+
+    const groups = groupByCoords(rows);
+
+    groups.forEach((group, groupKey) => {
+      const first = group[0];
+
+      if (group.length === 1) {
+        const p = first;
+
+        const icon = L.divIcon({
+          className: "",
+          html: markerHtmlFromTrainings(p.Trainings),
+          iconSize: [22, 22],
+          iconAnchor: [11, 11]
+        });
+
+        const m = L.marker([p.Lat, p.Lng], { icon }).addTo(map);
+
+        m.on("click", (e) => {
+          if (e.originalEvent) e.originalEvent.stopPropagation();
+          openModalFor(p);
+        });
+
+        baseLayers.push(m);
+        markers.set(p.id, m);
+        return;
+      }
+
+      const icon = L.divIcon({
+        className: "",
+        html: markerHtmlForGroup(group),
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+
+      const groupMarker = L.marker([first.Lat, first.Lng], { icon }).addTo(map);
+
+      groupMarker.on("click", (e) => {
+        if (e.originalEvent) {
+          e.originalEvent.preventDefault();
+          e.originalEvent.stopPropagation();
+        }
+
+        if (activeSpiderKey === groupKey) {
+          clearSpiderfy();
+          return;
+        }
+
+        // IMPORTANT : on attend la fin du clic avant de créer les markers spiderfy
+        setTimeout(() => {
+          spiderfyGroup(groupKey, group);
+        }, 0);
+      });
+
+      baseLayers.push(groupMarker);
+    });
+  }
+
+  function focus(id){
+    const p = allRows.find(x => x.id === id);
+    if (!p) return;
+
+    if (typeof p.Lat !== "number" || typeof p.Lng !== "number") {
+      openModalFor(p);
+      return;
+    }
+
+    const groupKey = `${p.Lat.toFixed(6)}|${p.Lng.toFixed(6)}`;
+    const samePlace = allRows.filter(x =>
+      typeof x.Lat === "number" &&
+      typeof x.Lng === "number" &&
+      x.Lat.toFixed(6) === p.Lat.toFixed(6) &&
+      x.Lng.toFixed(6) === p.Lng.toFixed(6)
+    );
+
+    map.setView([p.Lat, p.Lng], 11, { animate: true });
+
+    if (samePlace.length > 1) {
+      spiderfyGroup(groupKey, samePlace);
+    }
+
+    openModalFor(p);
+  }
+
+  map.on("click", () => {
+    clearSpiderfy();
+  });
+
+  function refreshActiveSpiderfy(){
+  if (!activeSpiderKey || !activeSpiderGroup || isRefreshingSpiderfy) return;
+
+  isRefreshingSpiderfy = true;
+
+  requestAnimationFrame(() => {
+    spiderfyGroup(activeSpiderKey, activeSpiderGroup);
+    isRefreshingSpiderfy = false;
+  });
+}
+
+map.on("zoomend", refreshActiveSpiderfy);
+map.on("moveend", refreshActiveSpiderfy);
+  
+  return { renderMarkers, focus };
+}
+  // ===== INIT =====
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    try {
+      const all = await fetchAll();
+
+      const state = {
+        country: "",
+        profession: "",
+        training: "",
+        search: ""
+      };
+
+      renderFilters(all);
+
+      const mapApi = initMap(all);
+
+      function rerender(){
+        const filtered = applyFilters(all, state);
+        mapApi.renderMarkers(filtered);
+        renderTable(filtered, (id) => mapApi.focus(id));
+        renderActiveFilters(state, rerender);
+      }
+
+      renderLegend(all, (trainingName) => {
+        state.training = trainingName || "";
+        document.getElementById("filter-training").value = state.training;
+        rerender();
+      });
+
+      document.getElementById("filter-country").addEventListener("change", (e) => {
+        state.country = e.target.value || "";
+        rerender();
+      });
+
+      document.getElementById("filter-profession").addEventListener("change", (e) => {
+        state.profession = e.target.value || "";
+        rerender();
+      });
+
+      document.getElementById("filter-training").addEventListener("change", (e) => {
+        state.training = e.target.value || "";
+        rerender();
+      });
+
+      const searchEl = document.getElementById("filter-search");
+      let t = null;
+
+      searchEl.addEventListener("input", (e) => {
+        clearTimeout(t);
+        t = setTimeout(() => {
+          state.search = e.target.value || "";
+          rerender();
+        }, 150);
+      });
+
+      document.getElementById("filter-reset").addEventListener("click", () => {
+        state.country = "";
+        state.profession = "";
+        state.training = "";
+        state.search = "";
+
+        document.getElementById("filter-country").value = "";
+        document.getElementById("filter-profession").value = "";
+        document.getElementById("filter-training").value = "";
+        document.getElementById("filter-search").value = "";
+
+        rerender();
+      });
+
+      rerender();
+
+    } catch (e) {
+      console.error("Directory init error:", e);
+    }
+  });
+</script>

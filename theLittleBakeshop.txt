@@ -3,7 +3,7 @@
 
 Ajouter des formulaires personnalisés à chaque produit avec exactement ces noms:
 
-- Pickup / delivery date (date)
+- Pickup / delivery date (texte)
 - Pickup time (heure)
 - Delivery time (menu déroulant)
 
@@ -110,11 +110,11 @@ localStorage.removeItem("patisserie_pickup_choice_v1");
     return d;
   }
 
-  function toYMD(dateObj) {
-    const y = dateObj.getFullYear();
-    const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+  function toDMY(dateObj) {
     const d = String(dateObj.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
+    const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const y = dateObj.getFullYear();
+    return `${d}/${m}/${y}`;
   }
 
   // =========================
@@ -353,7 +353,7 @@ localStorage.removeItem("patisserie_pickup_choice_v1");
     destroyPickers();
 
     const earliest = addWorkingDays(new Date(), CONFIG.delaiJoursOuvrables);
-    const earliestYMD = toYMD(earliest);
+    const earliestDMY = toDMY(earliest);
     const choice = pfDumpChoice("Choice at open");
 
     const wrap = document.createElement("div");
@@ -449,11 +449,9 @@ localStorage.removeItem("patisserie_pickup_choice_v1");
 
     if (typeof flatpickr === "function") {
       fpDeliveryDate = flatpickr(deliveryDateInput, {
-        locale: "en",
-        dateFormat: "Y-m-d",
-        altInput: true,
-        altFormat: "l, F j, Y",
-        minDate: earliestYMD,
+        locale: "fr",
+        dateFormat: "d/m/Y",        // <-- valeur stockée dans l'input
+        minDate: earliest,          // <-- Date object (plus fiable)
         disableMobile: true,
         static: !isMobile,
         appendTo: panelEl,
@@ -462,11 +460,9 @@ localStorage.removeItem("patisserie_pickup_choice_v1");
       });
 
       fpPickupDate = flatpickr(pickupDateInput, {
-        locale: "en",
-        dateFormat: "Y-m-d",
-        altInput: true,
-        altFormat: "l, F j, Y",
-        minDate: earliestYMD,
+        locale: "fr",
+        dateFormat: "d/m/Y",
+        minDate: earliest,
         disableMobile: true,
         static: !isMobile,
         appendTo: panelEl,
@@ -509,8 +505,8 @@ localStorage.removeItem("patisserie_pickup_choice_v1");
     }
 
     // restore values
-    if (choice?.deliveryDate && fpDeliveryDate) fpDeliveryDate.setDate(choice.deliveryDate, true, "Y-m-d");
-    if (choice?.pickupDate && fpPickupDate) fpPickupDate.setDate(choice.pickupDate, true, "Y-m-d");
+    if (choice?.deliveryDate && fpDeliveryDate) fpDeliveryDate.setDate(choice.deliveryDate, true, "d/m/Y");
+    if (choice?.pickupDate && fpPickupDate) fpPickupDate.setDate(choice.pickupDate, true, "d/m/Y");
     if (choice?.pickupTime && fpPickupTime) fpPickupTime.setDate(choice.pickupTime, true, "H:i");
     if (choice?.deliveryTime && deliveryTimeSelect) deliveryTimeSelect.value = choice.deliveryTime;
 
